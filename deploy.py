@@ -207,7 +207,7 @@ def create_container_acr():
         print(f"Service principal '{service_principal_name}' ya existe con appId: {user_name}")
     
     # Obtener la contraseña del service principal
-    password = os.popen(f"az ad sp credential reset --id {user_name} \
+    password = os.popen(f"az ad sp credential show --id {user_name} \
                                                     --query password \
                                                     --output tsv").read().strip()
     

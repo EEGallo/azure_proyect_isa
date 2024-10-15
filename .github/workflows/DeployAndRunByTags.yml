@@ -2,7 +2,10 @@ name: Deploy and Run
 env:
   REPO_NAME: ${{ github.event.repository.name }}
 on:
-  workflow_dispatch:
+  push:
+    tags: ['v*.*.*']
+
+
 permissions:
   id-token: write
   contents: read
@@ -15,17 +18,21 @@ jobs:
         shell: bash
     steps:
     - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4
-     
+      uses: actions/checkout@v3
+
+    - name: 'Get tag'
+      id: tag
+      uses: 'devops-actions/action-get-tag@v1.0.3'
+
     - name: 'Login via Docker'
       uses: azure/docker-login@v2
       with:
-        login-server: ${{ secrets.ACR_NAME_URL }}
+        login-server: ${{ secrets.ACR_NAME }}
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
     - run: |
-        docker build . -t ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
-        docker push ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
+        docker build . -t ${{ secrets.ACR_NAME }}/${{env.REPO_NAME}}:${{ steps.tag.outputs.tag}}
+        docker push ${{ secrets.ACR_NAME }}/${{env.REPO_NAME}}:${{ steps.tag.outputs.tag }}
 
   deploy:
     needs: build
@@ -35,18 +42,19 @@ jobs:
         shell: bash
     steps:
     - name: 'Login via Azure CLI'
-      uses: azure/login@v2
+      uses: azure/login@v1
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
     
     - name: 'deploy Container Instance'
-      uses: azure/aci-deploy@v1
+      uses: azure/aci-deploy@v1   # aci = azure container instance, no se puede escalar horizontalmente(crear mas instancias), si verticalmente (agregarle mas cpu o ram), sirve para hacer testeos.
+                                  # aca = azure container app, se puede escalar horizontal y verticalmente
       with:
         location: eastus
         name: flask-estructura
-        resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        image: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
-        dns-name-label: flask-estructura-${{ github.run_id }}-${{ github.run_attempt }}
+        resource-group: umGroupResource
+        image: ${{ secrets.ACR_NAME }}/${{env.REPO_NAME}}:${{ steps.tag.outputs.tag }}
+        dns-name-label: flask-estructura-${{ github.run_id }}-${{ steps.tag.outputs.tag }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
         ports: 5000
