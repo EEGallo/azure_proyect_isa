@@ -24,8 +24,8 @@ jobs:
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
     - run: |
-        docker build . -t ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
-        docker push ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
+        docker build . -t ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
+        docker push ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
 
   deploy:
     needs: build
@@ -45,7 +45,7 @@ jobs:
         location: eastus
         name: mycloudapp
         resource-group: recurso-aplicada
-        image: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
+        image: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
         dns-name-label: mycloudapp${{ github.run_id }}${{ steps.tag.outputs.tag && '-' || '' }}${{ steps.tag.outputs.tag }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
