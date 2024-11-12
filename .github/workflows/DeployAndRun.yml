@@ -49,9 +49,10 @@ jobs:
         dns-name-label: mycloudapp${{ github.run_id }}${{ steps.tag.outputs.tag && '-' || '' }}${{ steps.tag.outputs.tag }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-        ports: 5000
+        ports: 80
         cpu: 1
         memory: 1
+        ip-address: public
     
     - name: 'logout'
       run: |
