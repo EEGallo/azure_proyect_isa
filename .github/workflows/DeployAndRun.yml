@@ -52,7 +52,6 @@ jobs:
         ports: 80
         cpu: 1
         memory: 1
-        ip-address: public
     
     - name: 'logout'
       run: |
