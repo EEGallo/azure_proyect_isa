@@ -1,135 +1,96 @@
 import os
-from flask import Flask
-from opentelemetry import trace
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.resources import Resource
-from opentelemetry.instrumentation.flask import FlaskInstrumentor
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
-from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
+from apispec import APISpec
+from apispec.ext.marshmallow import MarshmallowPlugin
+from dotenv import load_dotenv
+from pathlib import Path
 import logging
 
-class AzureMonitorConfig:
-    """Configuración de Azure Monitor para telemetría de la aplicación"""
-    
-    def __init__(self, app: Flask, connection_string: str):
-        self.app = app
-        self.connection_string = connection_string
-        self.logger = logging.getLogger(__name__)
+basedir = os.path.abspath(Path(__file__).parents[2])
+load_dotenv(os.path.join(basedir, '.env'))
 
-    def _validate_connection_string(self) -> bool:
-        if not self.connection_string:
-            self.logger.error("Connection string is empty")
-            return False
+# Configuración de logger
+logger = logging.getLogger(__name__)
 
-        required_parts = ['InstrumentationKey', 'IngestionEndpoint']
-        try:
-            parts = dict(part.split('=', 1) for part in self.connection_string.split(';'))
-            return all(key in parts for key in required_parts)
-        except ValueError:
-            self.logger.error("Invalid connection string format")
-            return False
-
-    def initialize(self):
-        """Inicializa la configuración de Azure Monitor"""
-        try:
-            self.logger.info("Initializing Azure Monitor...")
-
-            if not self._validate_connection_string():
-                raise ValueError("Invalid or missing Azure Monitor connection string")
-
-            resource = Resource.create({
-                "service.name": self.app.config.get('SERVICE_NAME', 'flask-app'),
-                "service.namespace": self.app.config.get('SERVICE_NAMESPACE', 'default'),
-                "service.instance.id": os.getenv("HOSTNAME", "unknown")
-            })
-
-            tracer_provider = TracerProvider(resource=resource)
-            trace.set_tracer_provider(tracer_provider)
-
-            trace_exporter = AzureMonitorTraceExporter(
-                connection_string=self.connection_string
-            )
-            tracer_provider.add_span_processor(
-                BatchSpanProcessor(trace_exporter)
-            )
-
-            FlaskInstrumentor().instrument_app(self.app)
-            
-            self.logger.info("Azure Monitor configured successfully")
-
-        except Exception as e:
-            self.logger.error(f"Failed to initialize Azure Monitor: {str(e)}")
-            raise
-
-    def track_exception(self, exception: Exception):
-        """Registra una excepción en Azure Monitor"""
-        self.logger.error("Exception tracked", exc_info=exception)
-
-
-class Config:
-    """Configuración base"""
-    SERVICE_NAME = "flask-app"
-    SERVICE_NAMESPACE = "default"
-    DEBUG = False
+class Config(object):
     TESTING = False
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_RECORD_QUERIES = True
+    JWT_SECRET_KEY = os.environ.get('JWT_SECRET_KEY')
+    
+    # Configuración de la base de datos
+    DB_HOST = os.environ.get('DB_HOST')
+    DB_NAME = os.environ.get('DB_NAME')
+    DB_USER = os.environ.get('DB_USER')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD')
+    DB_SSLMODE = "require"
+
+    logger.info(f"DB_HOST: {DB_HOST}, DB_USER: {DB_USER}, DB_NAME: {DB_NAME}")
+
+    # Azure Monitor Configuration
+    CONNECTION_STRING = os.environ.get('CONNECTION_STRING')
+    if not CONNECTION_STRING:
+        logger.warning("CONNECTION_STRING no está configurada. Algunas funcionalidades podrían no estar disponibles.")
+    
+    OTEL_SERVICE_NAME = "recurso-aplicada"
+    
+    APISPEC_SPEC = APISpec(
+        title='Estructura Flask API', 
+        version='1.0.0', 
+        openapi_version='2.0', 
+        plugins=[MarshmallowPlugin()],
+        authorizations={
+            'description': 'Authorization HTTP header with JWT access token, like: Authorization: Bearer asdf.qwer.zxcv',
+            'in': 'header',
+            'type': 'string',
+            'required': True
+        }
+    )
+    APISPEC_SECURITY_DEFINITIONS = {
+        'bearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT'
+        }
+    }
 
     @staticmethod
     def init_app(app):
         pass
 
-
-class DevelopmentConfig(Config):
-    """Configuración para desarrollo"""
-    DEBUG = True
-    SERVICE_NAME = "flask-app-dev"
-
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
-
-
-class ProductionConfig(Config):
-    """Configuración para producción"""
-    DEBUG = False
-    SERVICE_NAME = "flask-app-prod"
-
-    @classmethod
-    def init_app(cls, app):
-        Config.init_app(app)
-
-
-class TestingConfig(Config):
-    """Configuración para pruebas"""
+class TestConfig(Config):
     TESTING = True
     DEBUG = True
-    SERVICE_NAME = "flask-app-test"
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_DATABASE_URI = os.environ.get('TEST_DATABASE_URI')
+    CACHE_REDIS_HOST = os.environ.get('REDIS_HOST')
+    CACHE_REDIS_PORT = os.environ.get('REDIS_PORT')
+    CACHE_REDIS_DB = os.environ.get('REDIS_DB')
+    CACHE_REDIS_PASSWORD = os.environ.get('REDIS_PASSWORD')
+    OTEL_SERVICE_NAME = "recurso-aplicada-test"
 
+class DevelopmentConfig(Config):
+    TESTING = True
+    DEBUG = True
+    SQLALCHEMY_TRACK_MODIFICATIONS = True
+    SQLALCHEMY_DATABASE_URI = os.environ.get('DEV_DATABASE_URI')
+    OTEL_SERVICE_NAME = "recurso-aplicada-dev"
+        
+class ProductionConfig(Config):
+    DEBUG = False
+    TESTING = False
+    SQLALCHEMY_RECORD_QUERIES = False
+    SQLALCHEMY_DATABASE_URI = os.environ.get('PROD_DATABASE_URI')
+    OTEL_SERVICE_NAME = "recurso-aplicada-prod"
+    
+    @classmethod
+    def init_app(cls, app):
+        Config.init_app(app)
 
-def get_config(app_context: str) -> type[Config]:
-    """
-    Factory para seleccionar la configuración según el contexto.
-    
-    Args:
-        app_context: El contexto de la aplicación ('development', 'production', 'testing')
-    
-    Returns:
-        La clase de configuración correspondiente
-    """
-    configurations = {
+def factory(app: str) -> Config:
+    configuration = {
+        'testing': TestConfig,
         'development': DevelopmentConfig,
-        'production': ProductionConfig,
-        'testing': TestingConfig
+        'production': ProductionConfig
     }
     
-    return configurations.get(app_context, DevelopmentConfig)
-
-
-# Asegurándonos de que estas clases y funciones estén disponibles cuando se importe el módulo
-__all__ = [
-    'AzureMonitorConfig',
-    'Config',
-    'DevelopmentConfig',
-    'ProductionConfig',
-    'TestingConfig',
-    'get_config'
-]
+    return configuration[app]

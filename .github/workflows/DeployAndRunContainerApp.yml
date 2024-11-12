@@ -15,12 +15,29 @@ jobs:
         shell: bash
     steps:
     - name: 'Checkout GitHub Action'
-      uses: actions/checkout@v4.2.1
+      uses: actions/checkout@v4
+
     - name: 'Login via Azure CLI'
-      uses: azure/login@v2.2.0
+      uses: azure/login@v2
       with:
         creds: ${{ secrets.AZURE_CREDENTIALS }}
-    
+
+    - name: 'Check and Create Container App Environment'
+      run: |
+        # Verificar si el environment existe
+        ENV_EXISTS=$(az containerapp env list -g "${{ secrets.AZURE_RESOURCE_GROUP }}" --query "[?name=='recurso-aplicada-env'].name" -o tsv)
+        
+        # Si no existe, créalo
+        if [ -z "$ENV_EXISTS" ]; then
+          echo "Creating Container App Environment..."
+          az containerapp env create \
+            --name recurso-aplicada-env \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --location eastus
+        else
+          echo "Container App Environment already exists"
+        fi
+
     - name: 'Deploy Container App'
       uses: azure/container-apps-deploy-action@v1
       with:
@@ -30,13 +47,50 @@ jobs:
         acrUsername: ${{ secrets.REGISTRY_USERNAME }}
         acrPassword: ${{ secrets.REGISTRY_PASSWORD }}
         location: eastus
-        containerAppName: mycloudapp
+        containerAppName: recurso-aplicada
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
-        environment: mycloudapp-env
-        imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
+        containerAppEnvironment: recurso-aplicada-env
+        imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
         ingress: external
         targetPort: 5000
+        environmentVariables: |
+          CONNECTION_STRING="${{ secrets.CONNECTION_STRING }}"
+          DB_HOST="${{ secrets.DB_HOST }}"
+          DB_NAME="${{ secrets.DB_NAME }}"
+          DB_USER="${{ secrets.DB_USER }}"
+          DB_PASSWORD="${{ secrets.DB_PASSWORD }}"
+
+    - name: 'Get Container App URL'
+      id: get_url
+      run: |
+        URL=$(az containerapp show \
+          --name recurso-aplicada \
+          --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+          --query "properties.configuration.ingress.fqdn" -o tsv)
+        echo "URL=https://$URL" >> $GITHUB_ENV
+        echo "App URL is https://$URL"
     
-    - name: 'logout'
+    - name: 'Wait for deployment to stabilize'
+      run: sleep 30
+
+    - name: 'Check health endpoint'
+      run: |
+        echo "Checking health at ${URL}/healthcheck"
+        for i in {1..5}; do
+          if curl --fail "${URL}/healthcheck"; then
+            echo "Health check passed!"
+            exit 0
+          else
+            echo "Health check attempt $i failed. Retrying in 5 seconds..."
+            sleep 5
+          fi
+        done
+    
+        echo "Health check failed after 5 attempts."
+        exit 1
+      env:
+        URL: ${{ env.URL }}
+    
+    - name: 'Logout from Azure'
       run: |
         az logout

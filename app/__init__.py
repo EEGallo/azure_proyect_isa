@@ -1,7 +1,8 @@
 import logging
 from flask import Flask
+from flask_marshmallow import Marshmallow
 import os
-from config import config
+from app.config import config
 from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
 from opentelemetry._logs import set_logger_provider
 from azure.monitor.opentelemetry.exporter import AzureMonitorLogExporter
@@ -15,6 +16,8 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from azure.monitor.opentelemetry.exporter import AzureMonitorTraceExporter
 
+ma = Marshmallow()
+
 logger_provider = LoggerProvider()
 set_logger_provider(logger_provider)
 exporter = AzureMonitorLogExporter(connection_string=os.getenv('CONNECTION_STRING'))
@@ -26,7 +29,7 @@ logger = logging.getLogger(__name__)
 logger.addHandler(handler)
 logger.setLevel(logging.NOTSET)
 
-def create_app() -> None:
+def create_app() -> Flask:
     app_context = os.getenv('FLASK_CONTEXT')
     app = Flask(__name__)
     f = config.factory(app_context if app_context else 'development')
@@ -43,10 +46,14 @@ def create_app() -> None:
     # Habilitar la instrumentación de trazas para la biblioteca Flask
     FlaskInstrumentor().instrument_app(app)
 
+    RequestsInstrumentor().instrument()
+
     trace_exporter = AzureMonitorTraceExporter(connection_string=app.config['CONNECTION_STRING'])
     trace.get_tracer_provider().add_span_processor(
         BatchSpanProcessor(trace_exporter)
     )
+
+    ma.init_app(app)
 
     @app.shell_context_processor    
     def ctx():
