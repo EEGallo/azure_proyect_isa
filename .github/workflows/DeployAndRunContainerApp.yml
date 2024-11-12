@@ -32,6 +32,7 @@ jobs:
         location: eastus
         containerAppName: mycloudapp
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        environment: mycloudapp-env
         imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
         ingress: external
         targetPort: 5000
