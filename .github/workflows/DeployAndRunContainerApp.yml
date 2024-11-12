@@ -34,7 +34,7 @@ jobs:
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
         imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
         ingress: external
-        targetPort: 80
+        ports: 80
         ip-address: public
         
     
