@@ -46,7 +46,7 @@ jobs:
         name: mycloudapp
         resource-group: recurso-aplicada
         image: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
-        dns-name-label: mycloudapp-${{ github.run_id }}-${{ github.run_attempt }}
+        dns-name-label: mycloudapp${{ github.run_id }}-${{ github.run_attempt }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
         ports: 5000
