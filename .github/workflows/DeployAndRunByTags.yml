@@ -53,7 +53,7 @@ jobs:
         location: eastus
         name: mycloudapp
         resource-group: recurso-aplicada
-        image: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ steps.tag.outputs.tag }}
+        image: mycloudapp.azurecr.io/mycloudapp:${{ steps.tag.outputs.tag }}
         dns-name-label: mycloudapp${{ github.run_id }}${{ steps.tag.outputs.tag && '-' || '' }}${{ steps.tag.outputs.tag }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
