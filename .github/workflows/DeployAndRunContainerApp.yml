@@ -30,7 +30,7 @@ jobs:
         acrUsername: ${{ secrets.REGISTRY_USERNAME }}
         acrPassword: ${{ secrets.REGISTRY_PASSWORD }}
         location: eastus
-        containerAppName: flask-estructura
+        containerAppName: mycloudapp
         resourceGroup: ${{ secrets.AZURE_RESOURCE_GROUP }}
         imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ github.sha }}
         ingress: external
