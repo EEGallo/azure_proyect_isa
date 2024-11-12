@@ -24,8 +24,8 @@ jobs:
         username: ${{ secrets.REGISTRY_USERNAME }}
         password: ${{ secrets.REGISTRY_PASSWORD }}
     - run: |
-        docker build . -t ${{ secrets.ACR_NAME_URL }}/${{ secrets.ACR_NAME }}:${{ github.sha }}
-        docker push ${{ secrets.ACR_NAME_URL }}/${{ secrets.ACR_NAME }}:${{ github.sha }}
+        docker build . -t ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
+        docker push ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
 
   deploy:
     needs: build
@@ -43,17 +43,16 @@ jobs:
       uses: azure/aci-deploy@v1
       with:
         location: eastus
-        name: mycloudapp
-        resource-group: recurso-aplicada
-        image: mycloudapp.azurecr.io/mycloudapp:v1.0.0
-        dns-name-label: mycloudapp${{ github.run_id }}${{ steps.tag.outputs.tag && '-' || '' }}${{ steps.tag.outputs.tag }}
+        name: flask-estructura
+        resource-group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        image: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
+        dns-name-label: flask-estructura-${{ github.run_id }}-${{ github.run_attempt }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
-        ports: 80
+        ports: 5000
         cpu: 1
         memory: 1
     
     - name: 'logout'
       run: |
         az logout
-      
