@@ -35,6 +35,7 @@ jobs:
         imageToDeploy: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ github.sha }}
         ingress: external
         targetPort: 5000
+        ip-address: public
         
     
     - name: 'logout'
