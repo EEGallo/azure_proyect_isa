@@ -55,10 +55,10 @@ jobs:
       uses: azure/aci-deploy@v1.1.3
       with:
         location: eastus
-        name: flask-estructura
+        name: mycloudapp
         resource-group: recurso-aplicada
         image: ${{ secrets.ACR_NAME_URL }}/${{secrets.ACR_NAME}}:${{ steps.tag.outputs.tag }}
-        dns-name-label: flask-estructura-${{ github.run_id }}-v1 
+        dns-name-label: mycloudapp-${{ github.run_id }}-v1 
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
         registry-password: ${{ secrets.REGISTRY_PASSWORD }}
         ports: 5000
