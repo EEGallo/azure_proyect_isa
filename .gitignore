@@ -133,7 +133,7 @@ dmypy.json
 .pyre/
 /bin 
 /include
-.env
+#.env
 /lib64
 pyvenv.cfg
 .vs/
