@@ -60,7 +60,6 @@ jobs:
         cpu: 1
         memory: 1
         ports: 80
-        ip-address: public
     
     - name: 'logout'
       run: |
