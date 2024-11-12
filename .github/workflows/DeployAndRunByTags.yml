@@ -52,7 +52,7 @@ jobs:
       with:
         location: eastus
         name: flask-estructura
-        resource-group: umGroupResource
+        resource-group: recurso-aplicada
         image: ${{ secrets.ACR_NAME_URL }}/${{env.REPO_NAME}}:${{ steps.tag.outputs.tag }}
         dns-name-label: flask-estructura-${{ github.run_id }}-${{ steps.tag.outputs.tag }}
         registry-username: ${{ secrets.REGISTRY_USERNAME }}
